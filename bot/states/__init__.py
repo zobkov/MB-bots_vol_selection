@@ -20,7 +20,6 @@ class ApplicationSG(StatesGroup):
     email = State()
     phone = State()
     personal_qualities = State()
-    departments = State()
     motivation = State()
     overview = State()
 

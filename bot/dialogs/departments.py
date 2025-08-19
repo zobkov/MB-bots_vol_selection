@@ -1,39 +1,39 @@
 from aiogram import types
 from aiogram.types import CallbackQuery
 from aiogram_dialog import Dialog, DialogManager, Window
-from aiogram_dialog.widgets.kbd import Button, Group, Start
+from aiogram_dialog.widgets.kbd import Button, Group, Start, Radio, Column
 from aiogram_dialog.widgets.text import Const, Format
 
 from bot.states import DepartmentSelectionSG, ApplicationSG
 
 
 # Обработчики выбора рейтинга для каждого отдела
-async def on_logistics_rating(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
-    rating = int(callback.data.split(":")[1])
+async def on_logistics_rating(callback: CallbackQuery, radio, dialog_manager: DialogManager, item_id: str):
+    rating = int(item_id)
     dialog_manager.dialog_data["logistics_rating"] = rating
     await dialog_manager.next()
 
 
-async def on_marketing_rating(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
-    rating = int(callback.data.split(":")[1])
+async def on_marketing_rating(callback: CallbackQuery, radio, dialog_manager: DialogManager, item_id: str):
+    rating = int(item_id)
     dialog_manager.dialog_data["marketing_rating"] = rating
     await dialog_manager.next()
 
 
-async def on_pr_rating(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
-    rating = int(callback.data.split(":")[1])
+async def on_pr_rating(callback: CallbackQuery, radio, dialog_manager: DialogManager, item_id: str):
+    rating = int(item_id)
     dialog_manager.dialog_data["pr_rating"] = rating
     await dialog_manager.next()
 
 
-async def on_program_rating(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
-    rating = int(callback.data.split(":")[1])
+async def on_program_rating(callback: CallbackQuery, radio, dialog_manager: DialogManager, item_id: str):
+    rating = int(item_id)
     dialog_manager.dialog_data["program_rating"] = rating
     await dialog_manager.next()
 
 
-async def on_partners_rating(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
-    rating = int(callback.data.split(":")[1])
+async def on_partners_rating(callback: CallbackQuery, radio, dialog_manager: DialogManager, item_id: str):
+    rating = int(item_id)
     dialog_manager.dialog_data["partners_rating"] = rating
     await dialog_manager.next()
 
@@ -54,24 +54,52 @@ async def on_departments_done(callback: CallbackQuery, button: Button, dialog_ma
 
 
 # Геттеры данных
+async def get_rating_options(dialog_manager: DialogManager, **kwargs):
+    """Геттер данных для выбора рейтинга"""
+    ratings = [
+        {"id": "1", "text": "1"},
+        {"id": "2", "text": "2"},
+        {"id": "3", "text": "3"},
+        {"id": "4", "text": "4"},
+        {"id": "5", "text": "5"},
+    ]
+    
+    return {"ratings": ratings}
+
+
 async def get_logistics_data(dialog_manager: DialogManager, **kwargs):
-    return {"department": "Логистика"}
+    data = get_rating_options(dialog_manager, **kwargs)
+    result = await data
+    result["department"] = "Логистика"
+    return result
 
 
 async def get_marketing_data(dialog_manager: DialogManager, **kwargs):
-    return {"department": "Маркетинг"}
+    data = get_rating_options(dialog_manager, **kwargs)
+    result = await data
+    result["department"] = "Маркетинг"
+    return result
 
 
 async def get_pr_data(dialog_manager: DialogManager, **kwargs):
-    return {"department": "PR"}
+    data = get_rating_options(dialog_manager, **kwargs)
+    result = await data
+    result["department"] = "PR"
+    return result
 
 
 async def get_program_data(dialog_manager: DialogManager, **kwargs):
-    return {"department": "Программа"}
+    data = get_rating_options(dialog_manager, **kwargs)
+    result = await data
+    result["department"] = "Программа"
+    return result
 
 
 async def get_partners_data(dialog_manager: DialogManager, **kwargs):
-    return {"department": "Партнеры"}
+    data = get_rating_options(dialog_manager, **kwargs)
+    result = await data
+    result["department"] = "Партнеры"
+    return result
 
 
 async def get_dept_overview_data(dialog_manager: DialogManager, **kwargs):
@@ -94,13 +122,15 @@ department_selection_dialog = Dialog(
     # Логистика
     Window(
         Format("📊 Оцените отдел '{department}' от 1 до 5:"),
-        Group(
-            Button(Const("1"), id="1", on_click=on_logistics_rating),
-            Button(Const("2"), id="2", on_click=on_logistics_rating),
-            Button(Const("3"), id="3", on_click=on_logistics_rating),
-            Button(Const("4"), id="4", on_click=on_logistics_rating),
-            Button(Const("5"), id="5", on_click=on_logistics_rating),
-            width=5,
+        Column(
+            Radio(
+                Format("🔘 {item[text]}"),
+                Format("⚪ {item[text]}"),
+                id="logistics_rating_radio",
+                item_id_getter=lambda item: item["id"],
+                items="ratings",
+                on_click=on_logistics_rating
+            ),
         ),
         state=DepartmentSelectionSG.logistics,
         getter=get_logistics_data,
@@ -109,13 +139,15 @@ department_selection_dialog = Dialog(
     # Маркетинг
     Window(
         Format("📊 Оцените отдел '{department}' от 1 до 5:"),
-        Group(
-            Button(Const("1"), id="1", on_click=on_marketing_rating),
-            Button(Const("2"), id="2", on_click=on_marketing_rating),
-            Button(Const("3"), id="3", on_click=on_marketing_rating),
-            Button(Const("4"), id="4", on_click=on_marketing_rating),
-            Button(Const("5"), id="5", on_click=on_marketing_rating),
-            width=5,
+        Column(
+            Radio(
+                Format("🔘 {item[text]}"),
+                Format("⚪ {item[text]}"),
+                id="marketing_rating_radio",
+                item_id_getter=lambda item: item["id"],
+                items="ratings",
+                on_click=on_marketing_rating
+            ),
         ),
         state=DepartmentSelectionSG.marketing,
         getter=get_marketing_data,
@@ -124,13 +156,15 @@ department_selection_dialog = Dialog(
     # PR
     Window(
         Format("📊 Оцените отдел '{department}' от 1 до 5:"),
-        Group(
-            Button(Const("1"), id="1", on_click=on_pr_rating),
-            Button(Const("2"), id="2", on_click=on_pr_rating),
-            Button(Const("3"), id="3", on_click=on_pr_rating),
-            Button(Const("4"), id="4", on_click=on_pr_rating),
-            Button(Const("5"), id="5", on_click=on_pr_rating),
-            width=5,
+        Column(
+            Radio(
+                Format("🔘 {item[text]}"),
+                Format("⚪ {item[text]}"),
+                id="pr_rating_radio",
+                item_id_getter=lambda item: item["id"],
+                items="ratings",
+                on_click=on_pr_rating
+            ),
         ),
         state=DepartmentSelectionSG.pr,
         getter=get_pr_data,
@@ -139,13 +173,15 @@ department_selection_dialog = Dialog(
     # Программа
     Window(
         Format("📊 Оцените отдел '{department}' от 1 до 5:"),
-        Group(
-            Button(Const("1"), id="1", on_click=on_program_rating),
-            Button(Const("2"), id="2", on_click=on_program_rating),
-            Button(Const("3"), id="3", on_click=on_program_rating),
-            Button(Const("4"), id="4", on_click=on_program_rating),
-            Button(Const("5"), id="5", on_click=on_program_rating),
-            width=5,
+        Column(
+            Radio(
+                Format("🔘 {item[text]}"),
+                Format("⚪ {item[text]}"),
+                id="program_rating_radio",
+                item_id_getter=lambda item: item["id"],
+                items="ratings",
+                on_click=on_program_rating
+            ),
         ),
         state=DepartmentSelectionSG.program,
         getter=get_program_data,
@@ -154,13 +190,15 @@ department_selection_dialog = Dialog(
     # Партнеры
     Window(
         Format("📊 Оцените отдел '{department}' от 1 до 5:"),
-        Group(
-            Button(Const("1"), id="1", on_click=on_partners_rating),
-            Button(Const("2"), id="2", on_click=on_partners_rating),
-            Button(Const("3"), id="3", on_click=on_partners_rating),
-            Button(Const("4"), id="4", on_click=on_partners_rating),
-            Button(Const("5"), id="5", on_click=on_partners_rating),
-            width=5,
+        Column(
+            Radio(
+                Format("🔘 {item[text]}"),
+                Format("⚪ {item[text]}"),
+                id="partners_rating_radio",
+                item_id_getter=lambda item: item["id"],
+                items="ratings",
+                on_click=on_partners_rating
+            ),
         ),
         state=DepartmentSelectionSG.partners,
         getter=get_partners_data,

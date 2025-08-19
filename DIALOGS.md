@@ -1,6 +1,9 @@
 # Документация по диалогам бота
 
-## Структура диалогов
+2. MenuSG.main → ApplicationSG.full_name (кнопка "Заполнить анкету")
+3. ApplicationSG.personal_qualities → DepartmentSelectionSG.logistics (автоматически)
+4. DepartmentSelectionSG.overview → ApplicationSG.motivation (через done/result)
+5. ApplicationSG.overview → MenuSG.main (после отправки анкеты)труктура диалогов
 
 ### StartSG - Стартовый диалог
 - `start` - приветственное окно с изображением и кнопкой перехода в меню
@@ -15,8 +18,7 @@
 - `dormitory` - вопрос о проживании в общежитии
 - `email` - ввод корпоративной почты
 - `phone` - запрос контактного телефона
-- `personal_qualities` - описание личных качеств
-- `departments` - переход к выбору отделов
+- `personal_qualities` - описание личных качеств (автоматически переходит к выбору отделов)
 - `motivation` - описание мотивации
 - `overview` - обзор всех ответов и подтверждение
 
@@ -63,12 +65,12 @@
 ## Валидация
 
 ### Email
-- Должен заканчиваться на `@spbu.ru`
+- Должен заканчиваться на `@spbu.ru`, `@student.spbu.ru` или `@gsom.spbu.ru`
 - Проверяется в `email_check()`
 
 ### Телефон
-- Принимается только через кнопку "Поделиться контактом"
-- Обрабатывается в `on_contact_received()`
+- Принимается как текстовый ввод, так и через кнопку "Поделиться контактом"
+- Обрабатывается в `on_phone_input()` и `on_contact_received()`
 
 ## Репозитории
 
