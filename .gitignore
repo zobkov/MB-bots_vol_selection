@@ -175,3 +175,11 @@ google_credentials.jsonconfig/google_credentials.json
 google_credentials.json
 test_unit
 broadcasts.json
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Alembic
+alembic/versions/*.pyc
