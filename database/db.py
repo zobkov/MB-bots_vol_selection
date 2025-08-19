@@ -35,13 +35,9 @@ class Database:
             logger.error(f"Error creating tables: {e}")
             raise
 
-    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
+    async def get_session(self) -> AsyncSession:
         """Получение сессии базы данных"""
-        async with self.session_factory() as session:
-            try:
-                yield session
-            finally:
-                await session.close()
+        return self.session_factory()
 
     async def close(self):
         """Закрытие соединения с базой данных"""

@@ -18,18 +18,10 @@ class DatabaseConfig:
     port: int = 5432
 
 @dataclass
-class ApplicationsDatabaseConfig:
-    user: str
-    password: str
-    database: str
-    host: str
-    port: int = 5432
-
-@dataclass
 class RedisConfig:
-    password: str
-    host: str = "0.0.0.0"
-    port: str = 6379
+    password: Optional[str]
+    host: str = "localhost"
+    port: int = 6379
 
 @dataclass
 class TgBot:
@@ -55,7 +47,6 @@ class SelectionConfig:
 class Config:
     tg_bot: TgBot
     db: DatabaseConfig
-    db_applications: ApplicationsDatabaseConfig
     redis: RedisConfig
     selection: SelectionConfig
     google: Optional[GoogleConfig] = None
@@ -79,19 +70,11 @@ def load_config(path: str = None) -> Config:
         host=env.str("DB_HOST"),
         port=env.int("DB_PORT", 5432)
     )
-    
-    db_applications_config = ApplicationsDatabaseConfig(
-        user=env.str("DB_APPLICATIONS_USER"),
-        password=env.str("DB_APPLICATIONS_PASS"),
-        database=env.str("DB_APPLICATIONS_NAME"),
-        host=env.str("DB_APPLICATIONS_HOST"),
-        port=env.int("DB_APPLICATIONS_PORT", 5432)
-    )
 
     redis = RedisConfig(
-        host=env.str("REDIS_HOST"),
+        host=env.str("REDIS_HOST", "localhost"),
         port=env.int("REDIS_PORT", 6379),
-        password=env.str("REDIS_PASSWORD")
+        password=env.str("REDIS_PASSWORD", None) if env.str("REDIS_PASSWORD", "") else None
     )
     
     # Настройки Google (опциональные)
@@ -126,7 +109,6 @@ def load_config(path: str = None) -> Config:
     return Config(
         tg_bot=tg_bot,
         db=db_config,
-        db_applications=db_applications_config,
         redis=redis,
         selection=selection_config,
         google=google_config

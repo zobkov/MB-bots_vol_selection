@@ -3,7 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 from aiogram_dialog import setup_dialogs
 from redis.asyncio import Redis
 
@@ -26,14 +26,17 @@ async def main():
     config = load_config()
     
     # Создаем Redis хранилище для FSM
-    redis = Redis(
-        host=config.redis.host,
-        port=config.redis.port,
-        password=config.redis.password if config.redis.password else None,
-        decode_responses=True
+    if config.redis.password:
+        redis_client = Redis.from_url(f"redis://:{config.redis.password}@{config.redis.host}:{config.redis.port}/0")
+    else:
+        redis_client = Redis.from_url(f"redis://{config.redis.host}:{config.redis.port}/0")
+    storage = RedisStorage(
+        redis=redis_client,
+        key_builder=DefaultKeyBuilder(with_bot_id=True, with_destiny=True),
+        state_ttl=86400,  # время жизни состояния в секунду (например, 1 день)
+        data_ttl=86400   # время жизни данных
     )
-    storage = RedisStorage(redis=redis)
-    
+
     # Создаем бота и диспетчер
     bot = Bot(
         token=config.tg_bot.token,
@@ -47,12 +50,15 @@ async def main():
     # Создаем таблицы
     await db.create_tables()
     
-    # Регистрируем middleware для передачи конфигурации и БД
-    @dp.middleware()
+    # Создаем middleware для передачи конфигурации и БД
     async def config_middleware(handler, event, data):
         data["config"] = config
         data["db"] = db
         return await handler(event, data)
+    
+    # Регистрируем middleware
+    dp.message.middleware(config_middleware)
+    dp.callback_query.middleware(config_middleware)
     
     # Регистрируем роутеры и диалоги
     dp.include_router(router)
@@ -70,7 +76,7 @@ async def main():
     finally:
         # Закрываем соединения
         await db.close()
-        await redis.close()
+        await redis_client.aclose()
         await bot.session.close()
 
 

@@ -18,7 +18,8 @@ async def get_menu_data(dialog_manager: DialogManager, **kwargs):
     # Получаем информацию о пользователе
     user = dialog_manager.event.from_user
     
-    async with db.get_session() as session:
+    session = await db.get_session()
+    try:
         user_repo = UserRepository(session)
         db_user = await user_repo.get_user_by_telegram_id(user.id)
         
@@ -28,6 +29,8 @@ async def get_menu_data(dialog_manager: DialogManager, **kwargs):
         else:
             status_text = "Заявка не подана"
             deadline_text = f"\n(дедлайн: {config.selection.stages['stage1']['deadline']})"
+    finally:
+        await session.close()
     
     menu_text = f"""🏠 Личный кабинет кандидата в команду волонтеров МБ 2025
 

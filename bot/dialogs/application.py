@@ -84,7 +84,8 @@ async def on_submit_application(callback: CallbackQuery, button: Button, dialog_
     db: Database = dialog_manager.middleware_data.get("db")
     
     # Сохраняем в БД
-    async with db.get_session() as session:
+    session = await db.get_session()
+    try:
         user_repo = UserRepository(session)
         app_repo = ApplicationRepository(session)
         
@@ -114,6 +115,8 @@ async def on_submit_application(callback: CallbackQuery, button: Button, dialog_
         
         # Обновляем статус пользователя
         await user_repo.update_stage1_status(user.id, "submitted")
+    finally:
+        await session.close()
     
     await callback.message.answer(
         "✅ Спасибо, что рассказал(а) о себе! "

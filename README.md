@@ -72,14 +72,7 @@ DB_NAME=vol_bot
 DB_HOST=localhost
 DB_PORT=5432
 
-# Applications Database (может совпадать с основной)
-DB_APPLICATIONS_USER=postgres
-DB_APPLICATIONS_PASS=your_password
-DB_APPLICATIONS_NAME=vol_bot
-DB_APPLICATIONS_HOST=localhost
-DB_APPLICATIONS_PORT=5432
-
-# Redis
+# Redis (password опционален - можно оставить пустым)
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
