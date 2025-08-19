@@ -50,6 +50,7 @@ class Config:
     redis: RedisConfig
     selection: SelectionConfig
     google: Optional[GoogleConfig] = None
+    log_level: str = "INFO"
 
 def load_config(path: str = None) -> Config:
     # Загружаем JSON конфигурацию
@@ -106,10 +107,13 @@ def load_config(path: str = None) -> Config:
         support_contacts=json_config["support_contacts"]
     )
     
+    log_level = env.str("LOG_LEVEL", "INFO")
+    
     return Config(
         tg_bot=tg_bot,
         db=db_config,
         redis=redis,
         selection=selection_config,
-        google=google_config
+        google=google_config,
+        log_level=log_level
     )

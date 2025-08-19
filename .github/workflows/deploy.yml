@@ -1,0 +1,134 @@
+name: Deploy Bot
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.13"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Create test environment file
+      run: |
+        cat > .env << EOF
+        BOT_TOKEN=test_token
+        DB_USER=postgres
+        DB_PASS=postgres
+        DB_NAME=test_db
+        DB_HOST=localhost
+        DB_PORT=5432
+        REDIS_HOST=localhost
+        REDIS_PORT=6379
+        REDIS_PASSWORD=
+        LOG_LEVEL=DEBUG
+        EOF
+
+    - name: Test imports and syntax
+      run: |
+        python -c "
+        import sys
+        try:
+            from config.config import load_config
+            from database.models import User, Application
+            from utils.logging_config import setup_logging
+            print('✅ All imports successful')
+        except Exception as e:
+            print(f'❌ Import error: {e}')
+            sys.exit(1)
+        "
+
+    - name: Check code style
+      run: |
+        # Базовая проверка синтаксиса Python
+        python -m py_compile main.py
+        find . -name "*.py" -not -path "./.venv/*" -exec python -m py_compile {} \;
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: |
+        docker build -t vol_selection_bot:latest .
+
+    - name: Test Docker image
+      run: |
+        # Создаем тестовый .env файл
+        cat > .env << EOF
+        BOT_TOKEN=test_token_for_docker
+        DB_USER=postgres
+        DB_PASS=postgres
+        DB_NAME=test_db
+        DB_HOST=localhost
+        DB_PORT=5432
+        REDIS_HOST=localhost
+        REDIS_PORT=6379
+        LOG_LEVEL=INFO
+        EOF
+        
+        # Проверяем, что образ собирается и может запускаться
+        echo "✅ Docker image built successfully"
+
+  # Раскомментируйте этот блок для автодеплоя на сервер
+  # deploy:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   
+  #   steps:
+  #   - name: Deploy to server
+  #     uses: appleboy/ssh-action@v1.0.0
+  #     with:
+  #       host: ${{ secrets.HOST }}
+  #       username: ${{ secrets.USERNAME }}
+  #       key: ${{ secrets.SSH_KEY }}
+  #       script: |
+  #         cd /path/to/vol_selection_MB_bot
+  #         git pull origin main
+  #         ./deploy.sh

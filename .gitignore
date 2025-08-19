@@ -136,7 +136,8 @@ dmypy.json
 *.sqlite3
 
 # logs
-/log
+/logs/
+*.log
 
 # IDE stuff
 .idea/

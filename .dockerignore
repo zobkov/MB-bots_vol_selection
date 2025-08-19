@@ -1,0 +1,71 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.pytest_cache
+nosetests.xml
+.venv
+venv/
+
+# Environment files
+.env
+.env.*
+
+# IDEs
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs (локальные логи не нужны в образе)
+logs/
+*.log
+
+# Backups
+backups/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Documentation
+README.md
+DIALOGS.md
+*.md
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Scripts
+deploy.sh
+monitor.sh
+Makefile
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Other
+.pytest_cache/
+test_*.py

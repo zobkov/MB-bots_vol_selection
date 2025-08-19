@@ -12,72 +12,93 @@ from database.db import Database
 from database.repositories import UserRepository
 from bot.handlers import router
 from bot.dialogs import start_dialog, menu_dialog, application_dialog, department_selection_dialog
-
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+from bot.middlewares import LoggingMiddleware
+from utils.logging_config import setup_logging, log_error, log_user_action
 
 
 async def main():
-    # Загружаем конфигурацию
-    config = load_config()
-    
-    # Создаем Redis хранилище для FSM
-    if config.redis.password:
-        redis_client = Redis.from_url(f"redis://:{config.redis.password}@{config.redis.host}:{config.redis.port}/0")
-    else:
-        redis_client = Redis.from_url(f"redis://{config.redis.host}:{config.redis.port}/0")
-    storage = RedisStorage(
-        redis=redis_client,
-        key_builder=DefaultKeyBuilder(with_bot_id=True, with_destiny=True),
-        state_ttl=86400,  # время жизни состояния в секунду (например, 1 день)
-        data_ttl=86400   # время жизни данных
-    )
-
-    # Создаем бота и диспетчер
-    bot = Bot(
-        token=config.tg_bot.token,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
-    dp = Dispatcher(storage=storage)
-    
-    # Создаем подключение к базе данных
-    db = Database(config)
-    
-    # Создаем таблицы
-    await db.create_tables()
-    
-    # Создаем middleware для передачи конфигурации и БД
-    async def config_middleware(handler, event, data):
-        data["config"] = config
-        data["db"] = db
-        return await handler(event, data)
-    
-    # Регистрируем middleware
-    dp.message.middleware(config_middleware)
-    dp.callback_query.middleware(config_middleware)
-    
-    # Регистрируем роутеры и диалоги
-    dp.include_router(router)
-    dp.include_router(start_dialog)
-    dp.include_router(menu_dialog)
-    dp.include_router(application_dialog)
-    dp.include_router(department_selection_dialog)
-    
-    # Настраиваем диалоги
-    setup_dialogs(dp)
-    
     try:
-        logger.info("Бот запускается...")
+        # Загружаем конфигурацию
+        config = load_config()
+        
+        # Настройка логирования с уровнем из конфигурации
+        logger = setup_logging(config.log_level)
+        logger.info("🚀 Запуск бота...")
+        logger.info("⚙️ Конфигурация загружена")
+        
+        # Создаем Redis хранилище для FSM
+        if config.redis.password:
+            redis_client = Redis.from_url(f"redis://:{config.redis.password}@{config.redis.host}:{config.redis.port}/0")
+        else:
+            redis_client = Redis.from_url(f"redis://{config.redis.host}:{config.redis.port}/0")
+            
+        # Проверка подключения к Redis
+        await redis_client.ping()
+        logger.info(f"🔗 Подключение к Redis установлено: {config.redis.host}:{config.redis.port}")
+        
+        storage = RedisStorage(
+            redis=redis_client,
+            key_builder=DefaultKeyBuilder(with_bot_id=True, with_destiny=True),
+            state_ttl=86400,  # время жизни состояния в секунду (например, 1 день)
+            data_ttl=86400   # время жизни данных
+        )
+
+        # Создаем бота и диспетчер
+        bot = Bot(
+            token=config.tg_bot.token,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+        )
+        dp = Dispatcher(storage=storage)
+        
+        # Проверка подключения к боту
+        bot_info = await bot.get_me()
+        logger.info(f"🤖 Бот подключен: @{bot_info.username} ({bot_info.first_name})")
+        
+        # Создаем подключение к базе данных
+        db = Database(config)
+        
+        # Создаем таблицы
+        await db.create_tables()
+        logger.info("🗄️ База данных инициализирована")
+        
+        # Создаем middleware для передачи конфигурации и БД
+        async def config_middleware(handler, event, data):
+            data["config"] = config
+            data["db"] = db
+            return await handler(event, data)
+        
+        # Регистрируем middleware
+        dp.message.middleware(LoggingMiddleware())
+        dp.callback_query.middleware(LoggingMiddleware())
+        dp.message.middleware(config_middleware)
+        dp.callback_query.middleware(config_middleware)
+        
+        # Регистрируем роутеры и диалоги
+        dp.include_router(router)
+        dp.include_router(start_dialog)
+        dp.include_router(menu_dialog)
+        dp.include_router(application_dialog)
+        dp.include_router(department_selection_dialog)
+        
+        # Настраиваем диалоги
+        setup_dialogs(dp)
+        logger.info("🔧 Роутеры и диалоги настроены")
+        
+        logger.info("✅ Бот готов к работе")
         await dp.start_polling(bot)
+        
+    except Exception as e:
+        log_error(e, "Критическая ошибка при запуске бота")
+        raise
     finally:
-        # Закрываем соединения
-        await db.close()
-        await redis_client.aclose()
-        await bot.session.close()
+        try:
+            # Закрываем соединения
+            await db.close()
+            await redis_client.aclose()
+            await bot.session.close()
+            logger.info("🛑 Бот остановлен")
+        except Exception as e:
+            log_error(e, "Ошибка при остановке бота")
 
 
 if __name__ == '__main__':
