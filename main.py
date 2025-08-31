@@ -13,6 +13,7 @@ from database.repositories import UserRepository
 from bot.handlers import router
 from bot.dialogs import start_dialog, menu_dialog, application_dialog, department_selection_dialog
 from bot.middlewares import LoggingMiddleware
+from bot.keyboards.command_menu import set_main_menu
 from utils.logging_config import setup_logging, log_error, log_user_action
 from utils.google_services import setup_google_sheets_service
 
@@ -58,6 +59,9 @@ async def main():
         # Создаем подключение к базе данных
         db = Database(config)
         
+        # Настраиваем меню команд
+        set_main_menu(bot)
+
         # Создаем таблицы
         await db.create_tables()
         logger.info("🗄️ База данных инициализирована")
