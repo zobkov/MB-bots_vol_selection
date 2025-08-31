@@ -14,6 +14,7 @@ from bot.handlers import router
 from bot.dialogs import start_dialog, menu_dialog, application_dialog, department_selection_dialog
 from bot.middlewares import LoggingMiddleware
 from utils.logging_config import setup_logging, log_error, log_user_action
+from utils.google_services import setup_google_sheets_service
 
 
 async def main():
@@ -61,10 +62,18 @@ async def main():
         await db.create_tables()
         logger.info("🗄️ База данных инициализирована")
         
-        # Создаем middleware для передачи конфигурации и БД
+        # Настраиваем Google Sheets сервис
+        google_sheets_service = setup_google_sheets_service(config)
+        if google_sheets_service:
+            logger.info("📊 Google Sheets сервис настроен")
+        else:
+            logger.warning("⚠️ Google Sheets сервис не настроен")
+        
+        # Создаем middleware для передачи конфигурации, БД и Google Sheets
         async def config_middleware(handler, event, data):
             data["config"] = config
             data["db"] = db
+            data["google_sheets_service"] = google_sheets_service
             return await handler(event, data)
         
         # Регистрируем middleware

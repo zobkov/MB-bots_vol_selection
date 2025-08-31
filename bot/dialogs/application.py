@@ -101,12 +101,13 @@ async def on_submit_application(callback: CallbackQuery, button: Button, dialog_
     data = dialog_manager.dialog_data
     user = dialog_manager.event.from_user
     db: Database = dialog_manager.middleware_data.get("db")
+    google_sheets_service = dialog_manager.middleware_data.get("google_sheets_service")
     
     # Сохраняем в БД
     session = await db.get_session()
     try:
         user_repo = UserRepository(session)
-        app_repo = ApplicationRepository(session)
+        app_repo = ApplicationRepository(session, google_sheets_service)
         
         # Получаем или создаем пользователя
         db_user = await user_repo.get_or_create_user(
@@ -130,7 +131,13 @@ async def on_submit_application(callback: CallbackQuery, button: Button, dialog_
             "partners_rating": data["partners_rating"],
         }
         
-        await app_repo.create_application(db_user.id, application_data)
+        # Дополнительные данные пользователя для Google Sheets
+        user_telegram_data = {
+            "telegram_id": user.id,
+            "telegram_username": user.username or "",
+        }
+        
+        await app_repo.create_application(db_user.id, application_data, user_telegram_data)
         
         # Обновляем статус пользователя
         await user_repo.update_stage1_status(user.id, "submitted")
