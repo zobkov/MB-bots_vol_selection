@@ -1,6 +1,6 @@
 from aiogram import types
 from aiogram.types import CallbackQuery, ContentType
-from aiogram_dialog import Dialog, DialogManager, Window, StartMode 
+from aiogram_dialog import Dialog, DialogManager, Window, StartMode, ShowMode
 from aiogram_dialog.widgets.kbd import Button, Start, Group, Select, Back, Next, SwitchTo, Cancel, Radio, Column
 from aiogram_dialog.widgets.text import Const, Format
 from aiogram_dialog.widgets.input import TextInput, MessageInput
@@ -149,7 +149,7 @@ async def on_submit_application(callback: CallbackQuery, button: Button, dialog_
         "Будем счастливы познакомиться вживую! "
         "Организаторы МБ'25 🤍"
     )
-    await dialog_manager.start(MenuSG.main, StartMode = StartMode.RESET_STACK)
+    await dialog_manager.start(MenuSG.main, mode=StartMode.RESET_STACK, show_mode=ShowMode.DELETE_AND_SEND)
 
 
 # Обработка возврата из диалога выбора отделов
@@ -221,7 +221,7 @@ async def get_overview_data(dialog_manager: DialogManager, **kwargs):
 application_dialog = Dialog(
     # Окно 1: ФИО
     Window(
-        Const("👤 Введите ваше полное ФИО:"),
+        Const("👤 Введи свою Фамилию, Имя и Отчество:\n\nНапример: Иванов Иван Иванович"),
         TextInput(
             id="full_name_input",
             on_success=on_full_name_input,
@@ -232,7 +232,7 @@ application_dialog = Dialog(
     
     # Окно 2: Курс обучения
     Window(
-        Const("🎓 Укажите курс обучения:"),
+        Const("🎓 Укажи свой курс обучения:"),
         Column(
             Radio(
                 Format("🔘 {item[text]}"),
@@ -280,7 +280,7 @@ application_dialog = Dialog(
     
     # Окно 5: Телефон
     Window(
-        Const("📱 Введите ваш номер телефона или поделитесь контактом:"),
+        Const("📱 Введи твой номер телефона:"),
         TextInput(
             id="phone_input",
             on_success=on_phone_input,
