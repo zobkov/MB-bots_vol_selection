@@ -51,5 +51,6 @@ class LoggingMiddleware(BaseMiddleware):
             return result
         except Exception as e:
             user_id = user.id if user else None
-            log_error(e, f"Ошибка в обработчике {handler.__name__}", user_id)
+            handler_name = getattr(handler, '__name__', str(handler))
+            log_error(e, f"Ошибка в обработчике {handler_name}", user_id)
             raise
