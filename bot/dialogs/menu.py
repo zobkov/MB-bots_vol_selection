@@ -24,22 +24,25 @@ async def get_menu_data(dialog_manager: DialogManager, **kwargs):
         db_user = await user_repo.get_user_by_telegram_id(user.id)
         
         if db_user:
-            status_text = "Заявка подана" if db_user.stage1_submitted == "submitted" else "Заявка не подана"
-            deadline_text = "" if db_user.stage1_submitted == "submitted" else f"\n(дедлайн: {config.selection.stages['stage1']['deadline']})"
+            is_submitted = db_user.stage1_submitted == "submitted"
+            status_text = "Заявка подана" if is_submitted else "Заявка не подана"
+            if is_submitted:
+                # Если заявка подана - показываем когда придут результаты
+                additional_info = f"\n📊 Результаты придут: {config.selection.stages['stage1']['results_date']}"
+            else:
+                # Если заявка не подана - показываем дедлайн
+                additional_info = f"\n⏰ Дедлайн: {config.selection.stages['stage1']['deadline']}"
         else:
             status_text = "Заявка не подана"
-            deadline_text = f"\n(дедлайн: {config.selection.stages['stage1']['deadline']})"
+            additional_info = f"\n⏰ Дедлайн: {config.selection.stages['stage1']['deadline']}"
     finally:
         await session.close()
     
     menu_text = f"""🏠 Личный кабинет кандидата в команду волонтеров МБ 2025
 
 📅 Текущий этап: {config.selection.stages['stage1']['name']}
-📝 Статус заявки: {status_text}{deadline_text}
+📝 Статус заявки: {status_text}\n{additional_info}
 
-📊 Результаты придут: {config.selection.stages['stage1']['results_date']}
-
-ТЕКСТ ТЕКСТ
 
 📋 Следующий этап: {config.selection.stages['stage2']['name']}
 🚀 Начало: {config.selection.stages['stage2']['start_date']}"""
