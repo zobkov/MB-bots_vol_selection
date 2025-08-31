@@ -228,8 +228,8 @@ application_dialog = Dialog(
         Const("🎓 Укажите курс обучения:"),
         Column(
             Radio(
-                Format("⚪ {item[text]}"),
                 Format("🔘 {item[text]}"),
+                Format("⚪ {item[text]}"),
                 id="course_radio",
                 item_id_getter=lambda item: item["id"],
                 items="courses",
