@@ -145,9 +145,8 @@ async def on_submit_application(callback: CallbackQuery, button: Button, dialog_
         await session.close()
     
     await callback.message.answer(
-        "✅ Спасибо, что рассказал(а) о себе! "
+        "✅ Спасибо, что рассказал(а) о себе!\n"
         "Будем счастливы познакомиться вживую!"
-        "Организаторы МБ'25 🤍" \
         "\n\nЗа новостями следи в нашем телеграм-канале @managementfuture"
     )
     await dialog_manager.start(MenuSG.main, mode=StartMode.RESET_STACK, show_mode=ShowMode.DELETE_AND_SEND)
