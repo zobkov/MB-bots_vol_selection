@@ -184,3 +184,5 @@ broadcasts.json
 
 # Alembic
 alembic/versions/*.pyc
+
+reference_bot/
