@@ -41,8 +41,8 @@ async def main():
         storage = RedisStorage(
             redis=redis_client,
             key_builder=DefaultKeyBuilder(with_bot_id=True, with_destiny=True),
-            state_ttl=86400,  # время жизни состояния в секунду (например, 1 день)
-            data_ttl=86400   # время жизни данных
+            state_ttl=86400*2,  # время жизни состояния в секунду (например, 1 день)
+            data_ttl=86400*2   # время жизни данных
         )
 
         # Создаем бота и диспетчер
