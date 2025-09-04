@@ -95,14 +95,19 @@ async def main():
         
         # Настраиваем диалоги
         setup_dialogs(dp)
-        logger.info("🔧 Роутеры и диалоги настроены")
         
+        # Регистрация обработчика ошибок
+        from bot.dialogs.dialog_error_handler import dialog_error_handler
+        dp.errors.register(dialog_error_handler)
+        
+        logger.info("🔧 Роутеры и диалоги настроены")
+
         logger.info("✅ Бот готов к работе")
         await dp.start_polling(bot)
         
     except Exception as e:
         log_error(e, "Критическая ошибка при запуске бота")
-        raise
+        raise 
     finally:
         try:
             # Закрываем соединения
