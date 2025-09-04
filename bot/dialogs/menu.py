@@ -21,19 +21,19 @@ async def get_menu_data(dialog_manager: DialogManager, **kwargs):
     session = await db.get_session()
     try:
         user_repo = UserRepository(session)
-        db_user = await user_repo.get_user_by_telegram_id(user.id)
+        # Создаем/получаем пользователя (дополнительная защита)
+        db_user = await user_repo.get_or_create_user(
+            telegram_id=user.id,
+            telegram_username=user.username
+        )
         
-        if db_user:
-            is_submitted = db_user.stage1_submitted == "submitted"
-            status_text = "Заявка подана" if is_submitted else "Заявка не подана"
-            if is_submitted:
-                # Если заявка подана - показываем когда придут результаты
-                additional_info = f"\n📊 Результаты придут: {config.selection.stages['stage1']['results_date']}"
-            else:
-                # Если заявка не подана - показываем дедлайн
-                additional_info = f"\n⏰ Дедлайн: {config.selection.stages['stage1']['deadline']}"
+        is_submitted = db_user.stage1_submitted == "submitted"
+        status_text = "Заявка подана" if is_submitted else "Заявка не подана"
+        if is_submitted:
+            # Если заявка подана - показываем когда придут результаты
+            additional_info = f"\n📊 Результаты придут: {config.selection.stages['stage1']['results_date']}"
         else:
-            status_text = "Заявка не подана"
+            # Если заявка не подана - показываем дедлайн
             additional_info = f"\n⏰ Дедлайн: {config.selection.stages['stage1']['deadline']}"
     finally:
         await session.close()
