@@ -1,5 +1,5 @@
 from aiogram import types
-from aiogram.types import CallbackQuery, ContentType
+from aiogram.types import CallbackQuery, ContentType, Message
 from aiogram_dialog import Dialog, DialogManager, Window, StartMode, ShowMode
 from aiogram_dialog.widgets.kbd import Button, Start, Group, Select, Back, Next, SwitchTo, Cancel, Radio, Column
 from aiogram_dialog.widgets.text import Const, Format
@@ -9,6 +9,9 @@ from bot.states import DepartmentSelectionSG, ApplicationSG, MenuSG
 from database.repositories import UserRepository, ApplicationRepository
 from database.db import Database
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # Валидация email
@@ -23,31 +26,47 @@ def email_check(text: str) -> str:
 # Обработка ввода ФИО
 async def on_full_name_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
     dialog_manager.dialog_data["full_name"] = text
-    await dialog_manager.next()
+    # Проверяем, находимся ли в режиме редактирования
+    if dialog_manager.dialog_data.get("is_editing", False):
+        await dialog_manager.switch_to(ApplicationSG.edit_menu)
+    else:
+        await dialog_manager.next()
 
 
 # Обработка ввода email
 async def on_email_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
     dialog_manager.dialog_data["email"] = text
-    await dialog_manager.next()
+    # Проверяем, находимся ли в режиме редактирования
+    if dialog_manager.dialog_data.get("is_editing", False):
+        await dialog_manager.switch_to(ApplicationSG.edit_menu)
+    else:
+        await dialog_manager.next()
 
 
 # Обработка ввода личных качеств
 async def on_qualities_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
     dialog_manager.dialog_data["personal_qualities"] = text
     
-    # Отправляем сообщение и сразу переходим к выбору отделов
-    await message.answer(
-        "📊 Теперь оцени свой интерес к каждому отделу от 1 до 5, "
-        "где 1 - наименее интересный, 5 - очень хотелось бы попасть в этот отдел."
-    )
-    await dialog_manager.start(DepartmentSelectionSG.logistics)
+    # Проверяем, находимся ли в режиме редактирования
+    if dialog_manager.dialog_data.get("is_editing", False):
+        await dialog_manager.switch_to(ApplicationSG.edit_menu)
+    else:
+        # Отправляем сообщение и сразу переходим к выбору отделов
+        await message.answer(
+            "📊 Теперь оцени свой интерес к каждому отделу от 1 до 5, "
+            "где 1 - наименее интересный, 5 - очень хотелось бы попасть в этот отдел."
+        )
+        await dialog_manager.start(DepartmentSelectionSG.logistics)
 
 
 # Обработка ввода мотивации
 async def on_motivation_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
     dialog_manager.dialog_data["motivation"] = text
-    await dialog_manager.next()
+    # Проверяем, находимся ли в режиме редактирования
+    if dialog_manager.dialog_data.get("is_editing", False):
+        await dialog_manager.switch_to(ApplicationSG.edit_menu)
+    else:
+        await dialog_manager.next()
 
 
 # Валидация телефона
@@ -62,14 +81,22 @@ def phone_check(text: str) -> str:
 # Обработка ввода телефона
 async def on_phone_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
     dialog_manager.dialog_data["phone"] = text
-    await dialog_manager.next()
+    # Проверяем, находимся ли в режиме редактирования
+    if dialog_manager.dialog_data.get("is_editing", False):
+        await dialog_manager.switch_to(ApplicationSG.edit_menu)
+    else:
+        await dialog_manager.next()
 
 
 # Обработка контакта
 async def on_contact_received(message: types.Message, widget, dialog_manager: DialogManager):
     if message.contact:
         dialog_manager.dialog_data["phone"] = message.contact.phone_number
-        await dialog_manager.next()
+        # Проверяем, находимся ли в режиме редактирования
+        if dialog_manager.dialog_data.get("is_editing", False):
+            await dialog_manager.switch_to(ApplicationSG.edit_menu)
+        else:
+            await dialog_manager.next()
     else:
         await message.answer("❌ Пожалуйста, поделитесь контактом через кнопку или введите номер текстом")
 
@@ -87,48 +114,81 @@ async def on_course_selected(callback: CallbackQuery, radio, dialog_manager: Dia
     
     dialog_manager.dialog_data["course"] = item_id
     dialog_manager.dialog_data["course_display"] = course_data[item_id]
-    await dialog_manager.next()
+    # Проверяем, находимся ли в режиме редактирования
+    if dialog_manager.dialog_data.get("is_editing", False):
+        await dialog_manager.switch_to(ApplicationSG.edit_menu)
+    else:
+        await dialog_manager.next()
 
 
 # Обработка выбора ВШМ
-async def on_vsm_selected(callback: CallbackQuery, radio, dialog_manager: DialogManager, item_id: str):
+async def on_vsm_selected(callback: CallbackQuery, checkbox, dialog_manager: DialogManager, item_id: str):
+    """Обработка выбора ВШМ"""
+    # item_id теперь "yes" или "no"
     is_from_vsm = item_id == "yes"
+    
     dialog_manager.dialog_data["is_from_vsm"] = is_from_vsm
-    if is_from_vsm:
-        await dialog_manager.switch_to(ApplicationSG.dormitory)
+    logger.debug(f"VSM selected: {is_from_vsm} (item_id: {item_id})")
+    
+    # Проверяем, находимся ли в режиме редактирования
+    if dialog_manager.dialog_data.get("is_editing", False):
+        await dialog_manager.switch_to(ApplicationSG.edit_menu)
     else:
-        await dialog_manager.next()
+        if is_from_vsm:
+            await dialog_manager.switch_to(ApplicationSG.dormitory)
+        else:
+            await dialog_manager.switch_to(ApplicationSG.is_from_spbu)
 
 
 # Обработка выбора СПбГУ
-async def on_spbu_selected(callback: CallbackQuery, radio, dialog_manager: DialogManager, item_id: str):
+async def on_spbu_selected(callback: CallbackQuery, checkbox, dialog_manager: DialogManager, item_id: str):
+    """Обработка выбора СПбГУ"""
     is_from_spbu = item_id == "yes"
+    
     dialog_manager.dialog_data["is_from_spbu"] = is_from_spbu
-    if is_from_spbu:
-        await dialog_manager.switch_to(ApplicationSG.email)
+    
+    # Проверяем, находимся ли в режиме редактирования
+    if dialog_manager.dialog_data.get("is_editing", False):
+        await dialog_manager.switch_to(ApplicationSG.edit_menu)
     else:
-        await dialog_manager.next()
+        if is_from_spbu:
+            await dialog_manager.switch_to(ApplicationSG.email)
+        else:
+            await dialog_manager.switch_to(ApplicationSG.university)
 
 
 # Обработка ввода университета
-async def on_university_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
-    dialog_manager.dialog_data["university"] = text
-    # Проверяем, нужно ли показывать вопрос об общежитии
-    is_from_vsm = dialog_manager.dialog_data.get("is_from_vsm", False)
-    if is_from_vsm:
-        # Если из ВШМ, пропускаем вопрос об общежитии
-        dialog_manager.dialog_data["dormitory"] = False  # По умолчанию False для ВШМ
-        await dialog_manager.switch_to(ApplicationSG.email)
+async def on_university_input(message: Message, widget, dialog_manager: DialogManager, text: str):
+    university = text.strip()
+    if not university:
+        await message.answer("Пожалуйста, укажите название вашего университета.")
+        return
+    
+    dialog_manager.dialog_data["university"] = university
+    
+    # Проверяем, находимся ли в режиме редактирования
+    if dialog_manager.dialog_data.get("is_editing", False):
+        await dialog_manager.switch_to(ApplicationSG.edit_menu)
     else:
-        # Если не из ВШМ, показываем вопрос об общежитии
         await dialog_manager.switch_to(ApplicationSG.email)
 
 
 # Обработка выбора общежития
+# Обработка выбора общежития
 async def on_dormitory_selected(callback: CallbackQuery, radio, dialog_manager: DialogManager, item_id: str):
-    dormitory = item_id == "yes"
-    dialog_manager.dialog_data["dormitory"] = dormitory
-    await dialog_manager.next()
+    dormitory_data = {
+        "yes": "Да, нужно",
+        "no": "Нет, не нужно"
+    }
+    
+    dialog_manager.dialog_data["dormitory"] = item_id
+    dialog_manager.dialog_data["dormitory_display"] = dormitory_data[item_id]
+    
+    # Проверяем, находимся ли в режиме редактирования
+    if dialog_manager.dialog_data.get("is_editing", False):
+        await dialog_manager.switch_to(ApplicationSG.edit_menu)
+    else:
+        await dialog_manager.next()
 
 
 # Обработка завершения заполнения анкеты
@@ -205,22 +265,27 @@ async def on_departments_result(start_data, result, dialog_manager: DialogManage
 
 # Обработчики для меню изменения заявки
 async def on_edit_full_name(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.switch_to(ApplicationSG.full_name)
 
 
 async def on_edit_course(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.switch_to(ApplicationSG.course)
 
 
 async def on_edit_vsm(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.switch_to(ApplicationSG.is_from_vsm)
 
 
 async def on_edit_spbu(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.switch_to(ApplicationSG.is_from_spbu)
 
 
 async def on_edit_university(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.switch_to(ApplicationSG.university)
 
 
@@ -231,26 +296,32 @@ async def on_edit_dormitory(callback: CallbackQuery, button: Button, dialog_mana
         # Если НЕ из ВШМ, не даем редактировать общежитие
         await callback.answer("❌ Этот вопрос доступен только для студентов ВШМ", show_alert=True)
         return
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.switch_to(ApplicationSG.dormitory)
 
 
 async def on_edit_email(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.switch_to(ApplicationSG.email)
 
 
 async def on_edit_phone(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.switch_to(ApplicationSG.phone)
 
 
 async def on_edit_qualities(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.switch_to(ApplicationSG.personal_qualities)
 
 
 async def on_edit_motivation(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.switch_to(ApplicationSG.motivation)
 
 
 async def on_edit_departments(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data["is_editing"] = True
     await dialog_manager.start(DepartmentSelectionSG.logistics)
 
 
@@ -330,6 +401,9 @@ async def get_edit_menu_data(dialog_manager: DialogManager, **kwargs):
     """Геттер данных для меню изменения заявки"""
     data = dialog_manager.dialog_data
     is_from_vsm = data.get("is_from_vsm", False)
+    
+    # Сбрасываем флаг редактирования при входе в меню
+    dialog_manager.dialog_data["is_editing"] = False
     
     return {
         "show_dormitory_edit": is_from_vsm  # Показываем редактирование общежития только если ИЗ ВШМ
