@@ -92,14 +92,20 @@ async def on_course_selected(callback: CallbackQuery, radio, dialog_manager: Dia
 async def on_vsm_selected(callback: CallbackQuery, radio, dialog_manager: DialogManager, item_id: str):
     is_from_vsm = item_id == "yes"
     dialog_manager.dialog_data["is_from_vsm"] = is_from_vsm
-    await dialog_manager.next()
+    if is_from_vsm:
+        await dialog_manager.switch_to(ApplicationSG.dormitory)
+    else:
+        await dialog_manager.next()
 
 
 # Обработка выбора СПбГУ
 async def on_spbu_selected(callback: CallbackQuery, radio, dialog_manager: DialogManager, item_id: str):
     is_from_spbu = item_id == "yes"
     dialog_manager.dialog_data["is_from_spbu"] = is_from_spbu
-    await dialog_manager.next()
+    if is_from_spbu:
+        await dialog_manager.switch_to(ApplicationSG.email)
+    else:
+        await dialog_manager.next()
 
 
 # Обработка ввода университета
@@ -113,7 +119,7 @@ async def on_university_input(message: types.Message, widget, dialog_manager: Di
         await dialog_manager.switch_to(ApplicationSG.email)
     else:
         # Если не из ВШМ, показываем вопрос об общежитии
-        await dialog_manager.next()
+        await dialog_manager.switch_to(ApplicationSG.email)
 
 
 # Обработка выбора общежития
