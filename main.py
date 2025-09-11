@@ -60,7 +60,7 @@ async def main():
         db = Database(config)
         
         # Настраиваем меню команд
-        set_main_menu(bot)
+        await set_main_menu(bot)
 
         # Создаем таблицы
         await db.create_tables()

@@ -64,26 +64,27 @@ class GoogleSheetsService:
             logger.info(f"📋 Открываем таблицу: {self.spreadsheet_id}")
             spreadsheet = self.gc.open_by_key(self.spreadsheet_id)
             
-            # Получаем лист "Applications" или создаем его
-            worksheet_name = "Applications"
+            # Получаем лист "TEST" для тестирования (или создаем его)
+            worksheet_name = "TEST"
             try:
-                logger.info(f"🔍 Ищем лист: {worksheet_name}")
+                logger.info(f"🔍 Ищем тестовый лист: {worksheet_name}")
                 worksheet = spreadsheet.worksheet(worksheet_name)
-                logger.info(f"✅ Лист {worksheet_name} найден")
+                logger.info(f"✅ Тестовый лист {worksheet_name} найден")
             except gspread.WorksheetNotFound:
-                logger.info(f"📄 Лист {worksheet_name} не найден, создаем новый...")
+                logger.info(f"📄 Тестовый лист {worksheet_name} не найден, создаем новый...")
                 # Создаем лист если его нет
-                worksheet = spreadsheet.add_worksheet(title=worksheet_name, rows=1000, cols=20)
+                worksheet = spreadsheet.add_worksheet(title=worksheet_name, rows=1000, cols=25)
                 
-                # Добавляем заголовки
+                # Добавляем заголовки с новыми полями
                 headers = [
                     'Timestamp', 'User ID', 'Username', 'Full Name', 'First Name', 'Last Name', 'Middle Name',
-                    'Course', 'Dormitory', 'Email', 'Phone', 'Personal Qualities', 'Motivation',
+                    'Course', 'Is From VSM', 'Is From SPBU', 'University', 'Dormitory', 'Email', 'Phone', 
+                    'Personal Qualities', 'Motivation',
                     'Logistics Rating', 'Marketing Rating', 'PR Rating', 'Program Rating', 'Partners Rating',
                     'Created At', 'Updated At'
                 ]
                 worksheet.append_row(headers)
-                logger.info(f"✅ Лист {worksheet_name} создан с заголовками")
+                logger.info(f"✅ Тестовый лист {worksheet_name} создан с заголовками")
             
             # Проверяем, есть ли уже запись для этого пользователя
             try:
@@ -111,6 +112,12 @@ class GoogleSheetsService:
             
             # Подготавливаем данные для записи
             logger.info(f"📝 Подготавливаем данные для записи...")
+            
+            # Преобразуем boolean значения в читаемый формат
+            vsm_text = "Да" if application_data.get('is_from_vsm') else "Нет" if application_data.get('is_from_vsm') is not None else ""
+            spbu_text = "Да" if application_data.get('is_from_spbu') else "Нет" if application_data.get('is_from_spbu') is not None else ""
+            dormitory_text = "Да" if application_data.get('dormitory') else "Нет"
+            
             row_data = [
                 datetime.now().isoformat(),  # Timestamp
                 application_data.get('telegram_id', ''),  # User ID
@@ -120,7 +127,10 @@ class GoogleSheetsService:
                 application_data.get('last_name', ''),  # Last Name
                 application_data.get('middle_name', ''),  # Middle Name
                 application_data.get('course', ''),  # Course
-                "Да" if application_data.get('dormitory') else "Нет",  # Dormitory
+                vsm_text,  # Is From VSM
+                spbu_text,  # Is From SPBU
+                application_data.get('university', ''),  # University
+                dormitory_text,  # Dormitory
                 application_data.get('email', ''),  # Email
                 application_data.get('phone', ''),  # Phone
                 application_data.get('personal_qualities', ''),  # Personal Qualities
@@ -138,7 +148,7 @@ class GoogleSheetsService:
             
             if update_method == "update" and existing_row:
                 # Обновляем существующую строку
-                worksheet.update(f'A{existing_row}:T{existing_row}', [row_data])
+                worksheet.update(f'A{existing_row}:W{existing_row}', [row_data])
                 logger.info(f"🔄 Заявка пользователя {application_data.get('telegram_id')} обновлена в Google Sheets")
             else:
                 # Добавляем новую строку

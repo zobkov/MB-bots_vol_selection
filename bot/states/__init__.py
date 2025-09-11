@@ -16,12 +16,16 @@ class ApplicationSG(StatesGroup):
     """Анкета - первый этап"""
     full_name = State()
     course = State()
+    is_from_vsm = State()
+    is_from_spbu = State()
+    university = State()
     dormitory = State()
     email = State()
     phone = State()
     personal_qualities = State()
     motivation = State()
     overview = State()
+    edit_menu = State()
 
 
 class DepartmentSelectionSG(StatesGroup):

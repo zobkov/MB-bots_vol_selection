@@ -37,6 +37,9 @@ class Application(Base):
     middle_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     
     course: Mapped[str] = mapped_column(String(50), nullable=False)  # '1_bachelor', '2_bachelor', etc.
+    is_from_vsm: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)  # Из ВШМ?
+    is_from_spbu: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)  # Из СПбГУ?
+    university: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # Название ВУЗа и факультет
     dormitory: Mapped[bool] = mapped_column(Boolean, nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(20), nullable=False)

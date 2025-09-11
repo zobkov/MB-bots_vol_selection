@@ -1,7 +1,18 @@
 from aiogram import types
 from aiogram.types import CallbackQuery, ContentType
 from aiogram_dialog import Dialog, DialogManager, Window, StartMode, ShowMode
-from aiogram_dialog.widgets.kbd import Button, Start, Group, Select, Back, Next, SwitchTo, Cancel, Radio, Column
+from aiogram_dialog.widgets.kbd import Button, Start, Group, Select, Back, Next, Switchasync def on_edit_departments(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    await dialog_manager.start(DepartmentSelectionSG.logistics)
+
+
+async def get_edit_menu_data(dialog_manager: DialogManager, **kwargs):
+    """Геттер данных для меню изменения заявки"""
+    data = dialog_manager.dialog_data
+    is_from_vsm = data.get("is_from_vsm", False)
+    
+    return {
+        "show_dormitory_edit": not is_from_vsm  # Показываем редактирование общежития только если не из ВШМ
+    }, Cancel, Radio, Column
 from aiogram_dialog.widgets.text import Const, Format
 from aiogram_dialog.widgets.input import TextInput, MessageInput
 
@@ -318,16 +329,6 @@ async def get_overview_data(dialog_manager: DialogManager, **kwargs):
     return {"overview_text": overview_text}
 
 
-async def get_edit_menu_data(dialog_manager: DialogManager, **kwargs):
-    """Геттер данных для меню изменения заявки"""
-    data = dialog_manager.dialog_data
-    is_from_vsm = data.get("is_from_vsm", False)
-    
-    return {
-        "show_dormitory_edit": not is_from_vsm  # Показываем редактирование общежития только если не из ВШМ
-    }
-
-
 application_dialog = Dialog(
     # Окно 1: ФИО
     Window(
@@ -507,7 +508,6 @@ application_dialog = Dialog(
         SwitchTo(Const("🔙 Назад к обзору"), id="back_to_overview", state=ApplicationSG.overview),
         Cancel(Const("❌ Отмена")),
         state=ApplicationSG.edit_menu,
-        getter=get_edit_menu_data,
     ),
     
     on_process_result=on_departments_result,
