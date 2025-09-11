@@ -13,8 +13,10 @@ import re
 
 # Валидация email
 def email_check(text: str) -> str:
-    if not (text.endswith("@spbu.ru") or text.endswith("@student.spbu.ru") or text.endswith("@gsom.spbu.ru")):
-        raise ValueError("❌ Email должен заканчиваться на @spbu.ru, @student.spbu.ru или @gsom.spbu.ru")
+    # Проверяем корректность формата email с помощью регулярного выражения
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, text):
+        raise ValueError("❌ Введите корректный email адрес")
     return text
 
 
@@ -431,7 +433,7 @@ application_dialog = Dialog(
     
     # Окно 7: Email
     Window(
-        Const("📧 Укажи свою корпоративную почту (должна заканчиваться на @spbu.ru, @student.spbu.ru или @gsom.spbu.ru):"),
+        Const("📧 Укажи свой email адрес:"),
         TextInput(
             id="email_input",
             on_success=on_email_input,
