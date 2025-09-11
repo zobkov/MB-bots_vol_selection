@@ -227,9 +227,9 @@ async def on_edit_university(callback: CallbackQuery, button: Button, dialog_man
 async def on_edit_dormitory(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
     # Проверяем, можно ли редактировать вопрос об общежитии
     is_from_vsm = dialog_manager.dialog_data.get("is_from_vsm", False)
-    if is_from_vsm:
-        # Если из ВШМ, не даем редактировать общежитие
-        await callback.answer("❌ Этот вопрос недоступен для студентов ВШМ", show_alert=True)
+    if not is_from_vsm:
+        # Если НЕ из ВШМ, не даем редактировать общежитие
+        await callback.answer("❌ Этот вопрос доступен только для студентов ВШМ", show_alert=True)
         return
     await dialog_manager.switch_to(ApplicationSG.dormitory)
 
@@ -296,9 +296,9 @@ async def get_overview_data(dialog_manager: DialogManager, **kwargs):
     vsm_text = "Да" if data.get("is_from_vsm") else "Нет"
     spbu_text = "Да" if data.get("is_from_spbu") else "Нет"
     
-    # Показываем общежитие только если не из ВШМ
+    # Показываем общежитие только если ИЗ ВШМ
     is_from_vsm = data.get("is_from_vsm", False)
-    dormitory_line = "" if is_from_vsm else f"🏠 Общежитие: {dormitory_text}\n"
+    dormitory_line = f"🏠 Общежитие: {dormitory_text}\n" if is_from_vsm else ""
     
     overview_text = f"""📋 Проверьте введенные данные:
 
@@ -332,7 +332,7 @@ async def get_edit_menu_data(dialog_manager: DialogManager, **kwargs):
     is_from_vsm = data.get("is_from_vsm", False)
     
     return {
-        "show_dormitory_edit": not is_from_vsm  # Показываем редактирование общежития только если не из ВШМ
+        "show_dormitory_edit": is_from_vsm  # Показываем редактирование общежития только если ИЗ ВШМ
     }
 
 
