@@ -40,7 +40,7 @@ class Application(Base):
     is_from_vsm: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)  # Из ВШМ?
     is_from_spbu: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)  # Из СПбГУ?
     university: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # Название ВУЗа и факультет
-    dormitory: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    dormitory: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)  # Общежитие (только для ВШМ)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(20), nullable=False)
     personal_qualities: Mapped[str] = mapped_column(Text, nullable=False)

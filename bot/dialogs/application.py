@@ -211,6 +211,14 @@ async def on_submit_application(callback: CallbackQuery, button: Button, dialog_
             telegram_username=user.username
         )
         
+        # Преобразуем dormitory из строки в bool, если значение есть
+        dormitory_value = data.get("dormitory")
+        dormitory_bool = None
+        if dormitory_value == "yes":
+            dormitory_bool = True
+        elif dormitory_value == "no":
+            dormitory_bool = False
+        
         # Создаем заявку
         application_data = {
             "full_name": data["full_name"],
@@ -218,7 +226,7 @@ async def on_submit_application(callback: CallbackQuery, button: Button, dialog_
             "is_from_vsm": data.get("is_from_vsm"),
             "is_from_spbu": data.get("is_from_spbu"),
             "university": data.get("university"),
-            "dormitory": data["dormitory"],
+            "dormitory": dormitory_bool,  # Может быть True, False или None
             "email": data["email"],
             "phone": data["phone"],
             "personal_qualities": data["personal_qualities"],
@@ -363,7 +371,9 @@ async def get_course_options(dialog_manager: DialogManager, **kwargs):
 async def get_overview_data(dialog_manager: DialogManager, **kwargs):
     data = dialog_manager.dialog_data
     
-    dormitory_text = "Да" if data.get("dormitory") else "Нет"
+    # Безопасно получаем значение общежития
+    dormitory_value = data.get("dormitory")
+    dormitory_text = "Да" if dormitory_value == "yes" else "Нет"
     vsm_text = "Да" if data.get("is_from_vsm") else "Нет"
     spbu_text = "Да" if data.get("is_from_spbu") else "Нет"
     
