@@ -517,7 +517,7 @@ application_dialog = Dialog(
     
     # Окно 7: Email
     Window(
-        Const("📧 Укажи свой email адрес:"),
+        Const("📧 Укажи свой email адрес (Если из СПбГУ, то укажи, пожалуйста, почту st):"),
         TextInput(
             id="email_input",
             on_success=on_email_input,
