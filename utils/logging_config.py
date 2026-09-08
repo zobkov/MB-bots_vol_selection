@@ -12,8 +12,8 @@ def setup_logging(log_level: str = "INFO"):
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
     
-    # Определяем уровень логирования
-    level = getattr(logging, log_level.upper(), logging.INFO)
+    # Консольный уровень логирования (по умолчанию INFO)
+    console_level = getattr(logging, log_level.upper(), logging.INFO)
     
     # Формат логов
     log_format = logging.Formatter(
@@ -27,27 +27,27 @@ def setup_logging(log_level: str = "INFO"):
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     
-    # Корневой логгер
+    # Корневой логгер настраиваем на DEBUG, чтобы файловые хендлеры получали все сообщения
     root_logger = logging.getLogger()
-    root_logger.setLevel(level)
+    root_logger.setLevel(logging.DEBUG)
     
     # Очищаем существующие хендлеры
     root_logger.handlers.clear()
     
-    # Консольный хендлер
+    # Консольный хендлер - только INFO и выше
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(level)
+    console_handler.setLevel(console_level)
     console_handler.setFormatter(log_format)
     root_logger.addHandler(console_handler)
     
-    # Общий файловый хендлер
+    # Общий файловый хендлер - DEBUG и выше
     general_handler = RotatingFileHandler(
         log_dir / "bot.log",
         maxBytes=50*1024*1024,  # 50MB
         backupCount=5,
         encoding='utf-8'
     )
-    general_handler.setLevel(level)
+    general_handler.setLevel(logging.DEBUG)
     general_handler.setFormatter(detailed_format)
     root_logger.addHandler(general_handler)
     
@@ -62,20 +62,21 @@ def setup_logging(log_level: str = "INFO"):
     error_handler.setFormatter(detailed_format)
     root_logger.addHandler(error_handler)
     
-    # Хендлер для действий пользователей
+    # Хендлер для действий пользователей - пишет в файл DEBUG и выше
     user_actions_handler = RotatingFileHandler(
         log_dir / "user_actions.log",
         maxBytes=20*1024*1024,  # 20MB
         backupCount=5,
         encoding='utf-8'
     )
-    user_actions_handler.setLevel(logging.INFO)
+    user_actions_handler.setLevel(logging.DEBUG)
     user_actions_handler.setFormatter(detailed_format)
     
     # Создаем специальный логгер для действий пользователей
     user_logger = logging.getLogger('user_actions')
+    user_logger.handlers.clear()
     user_logger.addHandler(user_actions_handler)
-    user_logger.setLevel(logging.INFO)
+    user_logger.setLevel(logging.DEBUG)
     user_logger.propagate = False  # Не передаем в корневой логгер
     
     # Логгер для базы данных
@@ -89,11 +90,12 @@ def setup_logging(log_level: str = "INFO"):
     db_handler.setFormatter(detailed_format)
     
     db_logger = logging.getLogger('database')
+    db_logger.handlers.clear()
     db_logger.addHandler(db_handler)
     db_logger.setLevel(logging.INFO)
     db_logger.propagate = False
     
-    # Понижаем уровень для библиотек
+    # Понижаем уровень для внешних библиотек
     logging.getLogger('aiogram').setLevel(logging.WARNING)
     logging.getLogger('aiohttp').setLevel(logging.WARNING)
     logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
@@ -112,9 +114,15 @@ def get_db_logger():
 
 
 def log_user_action(user_id: int, username: str, action: str, details: str = ""):
-    """Логирование действий пользователя"""
+    """Логирование действий пользователя (уровень INFO)"""
     logger = get_user_logger()
     logger.info(f"USER:{user_id}:{username} - {action} - {details}")
+
+
+def log_user_debug(user_id: int, username: str, action: str, details: str = ""):
+    """Логирование действий пользователя для отладки (уровень DEBUG в файл)"""
+    logger = get_user_logger()
+    logger.debug(f"USER:{user_id}:{username} - {action} - {details}")
 
 
 def log_db_operation(operation: str, table: str, details: str = "", user_id: int = None):

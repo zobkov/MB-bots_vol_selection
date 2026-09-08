@@ -10,10 +10,18 @@ from aiogram_dialog.widgets.input import TextInput, MessageInput
 from bot.states import ApplicationSG, StartSG, MenuSG
 from database.repositories import UserRepository, ApplicationRepository
 from database.db import Database
-from utils.logging_config import log_user_action
+from utils.logging_config import log_user_action, log_user_debug
 from utils.emojis import emoji, num_emoji
 
 logger = logging.getLogger(__name__)
+
+
+def _log_app_debug(user, action: str, details: str = ""):
+    """Вспомогательная функция для дебаг-логирования действий в анкете"""
+    if not user:
+        return
+    username = user.username or f"{user.first_name or ''} {user.last_name or ''}".strip()
+    log_user_debug(user.id, username, f"APPLICATION:{action}", details)
 
 
 # ============================================================================
@@ -49,8 +57,10 @@ def phone_check(text: str) -> str:
 # ============================================================================
 
 async def on_full_name_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
+    is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
+    _log_app_debug(message.from_user, "INPUT_FULL_NAME", f"value='{text}', is_editing={is_editing}")
     dialog_manager.dialog_data["full_name"] = text
-    if dialog_manager.dialog_data.get("is_editing"):
+    if is_editing:
         dialog_manager.dialog_data["is_editing"] = False
         await dialog_manager.switch_to(ApplicationSG.overview)
     else:
@@ -58,8 +68,10 @@ async def on_full_name_input(message: types.Message, widget, dialog_manager: Dia
 
 
 async def on_email_st_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
+    is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
+    _log_app_debug(message.from_user, "INPUT_EMAIL_ST", f"value='{text}', is_editing={is_editing}")
     dialog_manager.dialog_data["email_st"] = text
-    if dialog_manager.dialog_data.get("is_editing"):
+    if is_editing:
         dialog_manager.dialog_data["is_editing"] = False
         await dialog_manager.switch_to(ApplicationSG.overview)
     else:
@@ -67,8 +79,10 @@ async def on_email_st_input(message: types.Message, widget, dialog_manager: Dial
 
 
 async def on_phone_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
+    is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
+    _log_app_debug(message.from_user, "INPUT_PHONE", f"value='{text}', is_editing={is_editing}")
     dialog_manager.dialog_data["phone"] = text
-    if dialog_manager.dialog_data.get("is_editing"):
+    if is_editing:
         dialog_manager.dialog_data["is_editing"] = False
         await dialog_manager.switch_to(ApplicationSG.overview)
     else:
@@ -77,19 +91,25 @@ async def on_phone_input(message: types.Message, widget, dialog_manager: DialogM
 
 async def on_contact_received(message: types.Message, widget, dialog_manager: DialogManager):
     if message.contact:
+        is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
         dialog_manager.dialog_data["phone"] = message.contact.phone_number
-        if dialog_manager.dialog_data.get("is_editing"):
+        _log_app_debug(message.from_user, "CONTACT_RECEIVED", f"phone='{message.contact.phone_number}', is_editing={is_editing}")
+        if is_editing:
             dialog_manager.dialog_data["is_editing"] = False
             await dialog_manager.switch_to(ApplicationSG.overview)
         else:
             await dialog_manager.next()
     else:
+        _log_app_debug(message.from_user, "CONTACT_INVALID", "Received message without contact")
         await message.answer("❌ Пожалуйста, отправьте контакт через кнопку или напишите номер текстом.")
 
 
 async def on_faculty_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
-    dialog_manager.dialog_data["faculty"] = text.strip()
-    if dialog_manager.dialog_data.get("is_editing"):
+    is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
+    faculty_val = text.strip()
+    _log_app_debug(message.from_user, "INPUT_FACULTY", f"value='{faculty_val}', is_editing={is_editing}")
+    dialog_manager.dialog_data["faculty"] = faculty_val
+    if is_editing:
         dialog_manager.dialog_data["is_editing"] = False
         await dialog_manager.switch_to(ApplicationSG.overview)
     else:
@@ -106,8 +126,11 @@ async def on_course_selected(callback: CallbackQuery, radio, dialog_manager: Dia
         "2_master": "2 курс магистратура",
         "other": "Другое"
     }
-    dialog_manager.dialog_data["course"] = courses_map.get(item_id, item_id)
-    if dialog_manager.dialog_data.get("is_editing"):
+    course_display = courses_map.get(item_id, item_id)
+    dialog_manager.dialog_data["course"] = course_display
+    is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
+    _log_app_debug(callback.from_user, "SELECT_COURSE", f"item_id='{item_id}', course='{course_display}', is_editing={is_editing}")
+    if is_editing:
         dialog_manager.dialog_data["is_editing"] = False
         await dialog_manager.switch_to(ApplicationSG.overview)
     else:
@@ -119,8 +142,11 @@ async def on_days_count_selected(callback: CallbackQuery, radio, dialog_manager:
         "2_days": "2 дня",
         "3_days": "3 дня"
     }
-    dialog_manager.dialog_data["days_count"] = days_map.get(item_id, item_id)
-    if dialog_manager.dialog_data.get("is_editing"):
+    days_display = days_map.get(item_id, item_id)
+    dialog_manager.dialog_data["days_count"] = days_display
+    is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
+    _log_app_debug(callback.from_user, "SELECT_DAYS_COUNT", f"item_id='{item_id}', days='{days_display}', is_editing={is_editing}")
+    if is_editing:
         dialog_manager.dialog_data["is_editing"] = False
         await dialog_manager.switch_to(ApplicationSG.overview)
     else:
@@ -131,7 +157,9 @@ async def on_day_zero_selected(callback: CallbackQuery, radio, dialog_manager: D
     is_available = item_id == "yes"
     dialog_manager.dialog_data["day_zero_available"] = is_available
     dialog_manager.dialog_data["day_zero_display"] = "Да" if is_available else "Нет"
-    if dialog_manager.dialog_data.get("is_editing"):
+    is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
+    _log_app_debug(callback.from_user, "SELECT_DAY_ZERO", f"item_id='{item_id}', available={is_available}, is_editing={is_editing}")
+    if is_editing:
         dialog_manager.dialog_data["is_editing"] = False
         await dialog_manager.switch_to(ApplicationSG.overview)
     else:
@@ -144,8 +172,11 @@ async def on_role_selected(callback: CallbackQuery, radio, dialog_manager: Dialo
         "photographer": "Фотограф",
         "videographer": "Видеограф"
     }
-    dialog_manager.dialog_data["preferred_role"] = roles_map.get(item_id, item_id)
-    if dialog_manager.dialog_data.get("is_editing"):
+    role_display = roles_map.get(item_id, item_id)
+    dialog_manager.dialog_data["preferred_role"] = role_display
+    is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
+    _log_app_debug(callback.from_user, "SELECT_ROLE", f"item_id='{item_id}', role='{role_display}', is_editing={is_editing}")
+    if is_editing:
         dialog_manager.dialog_data["is_editing"] = False
         await dialog_manager.switch_to(ApplicationSG.overview)
     else:
@@ -153,8 +184,10 @@ async def on_role_selected(callback: CallbackQuery, radio, dialog_manager: Dialo
 
 
 async def on_motivation_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
+    is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
+    _log_app_debug(message.from_user, "INPUT_MOTIVATION", f"chars={len(text.strip())}, is_editing={is_editing}")
     dialog_manager.dialog_data["motivation"] = text.strip()
-    if dialog_manager.dialog_data.get("is_editing"):
+    if is_editing:
         dialog_manager.dialog_data["is_editing"] = False
         await dialog_manager.switch_to(ApplicationSG.overview)
     else:
@@ -162,8 +195,10 @@ async def on_motivation_input(message: types.Message, widget, dialog_manager: Di
 
 
 async def on_experience_input(message: types.Message, widget, dialog_manager: DialogManager, text: str):
+    is_editing = bool(dialog_manager.dialog_data.get("is_editing"))
+    _log_app_debug(message.from_user, "INPUT_EXPERIENCE", f"chars={len(text.strip())}, is_editing={is_editing}")
     dialog_manager.dialog_data["volunteer_experience"] = text.strip()
-    if dialog_manager.dialog_data.get("is_editing"):
+    if is_editing:
         dialog_manager.dialog_data["is_editing"] = False
         await dialog_manager.switch_to(ApplicationSG.overview)
     else:
@@ -178,7 +213,23 @@ async def on_edit_field(callback: CallbackQuery, button: Button, dialog_manager:
     target_state_name = button.widget_id.replace("edit_", "")
     target_state = getattr(ApplicationSG, target_state_name)
     dialog_manager.dialog_data["is_editing"] = True
+    _log_app_debug(callback.from_user, "EDIT_FIELD_CHOSEN", f"target_state={target_state_name}")
     await dialog_manager.switch_to(target_state)
+
+
+async def on_to_edit_menu(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    _log_app_debug(callback.from_user, "OPEN_EDIT_MENU", "Opened edit menu from overview")
+    await dialog_manager.switch_to(ApplicationSG.edit_menu)
+
+
+async def on_back_to_overview(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    _log_app_debug(callback.from_user, "BACK_TO_OVERVIEW", "Returned to overview from edit menu")
+    await dialog_manager.switch_to(ApplicationSG.overview)
+
+
+async def on_application_cancelled(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    state = dialog_manager.current_context().state if dialog_manager.current_context() else "unknown"
+    _log_app_debug(callback.from_user, "APPLICATION_CANCELLED", f"User cancelled application at state {state}")
 
 
 # ============================================================================
@@ -262,6 +313,8 @@ async def on_submit_application(callback: CallbackQuery, button: Button, dialog_
     db: Database = dialog_manager.middleware_data.get("db")
     google_sheets_service = dialog_manager.middleware_data.get("google_sheets_service")
     
+    _log_app_debug(user, "SUBMIT_APPLICATION_ATTEMPT", f"data_keys={list(data.keys())}")
+    
     session = await db.get_session()
     try:
         user_repo = UserRepository(session)
@@ -296,6 +349,7 @@ async def on_submit_application(callback: CallbackQuery, button: Button, dialog_
         username = user.username or f"{user.first_name or ''} {user.last_name or ''}".strip()
         logger.info(f"✅ Пользователь {user.id} (@{user.username}) успешно заполнил и отправил анкету: {data.get('full_name')}")
         log_user_action(user.id, username, "APPLICATION_SUBMITTED", f"ФИО: {data.get('full_name')}, Email: {data.get('email_st')}")
+        _log_app_debug(user, "APPLICATION_SAVED_SUCCESS", f"app_id for user {user.id}")
     finally:
         await session.close()
     
@@ -315,7 +369,7 @@ application_dialog = Dialog(
             on_success=on_full_name_input,
             type_factory=full_name_check,
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.full_name,
     ),
     
@@ -327,7 +381,7 @@ application_dialog = Dialog(
             on_success=on_email_st_input,
             type_factory=email_st_check,
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.email_st,
     ),
     
@@ -343,7 +397,7 @@ application_dialog = Dialog(
             func=on_contact_received,
             content_types=[ContentType.CONTACT],
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.phone,
     ),
     
@@ -354,7 +408,7 @@ application_dialog = Dialog(
             id="faculty_input",
             on_success=on_faculty_input,
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.faculty,
     ),
     
@@ -371,7 +425,7 @@ application_dialog = Dialog(
                 on_click=on_course_selected
             ),
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.course,
         getter=get_courses_options,
     ),
@@ -392,7 +446,7 @@ application_dialog = Dialog(
                 on_click=on_days_count_selected
             ),
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.days_count,
         getter=get_days_options,
     ),
@@ -410,7 +464,7 @@ application_dialog = Dialog(
                 on_click=on_day_zero_selected
             ),
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.day_zero,
         getter=get_day_zero_options,
     ),
@@ -428,7 +482,7 @@ application_dialog = Dialog(
                 on_click=on_role_selected
             ),
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.role,
         getter=get_roles_options,
     ),
@@ -440,7 +494,7 @@ application_dialog = Dialog(
             id="motivation_input",
             on_success=on_motivation_input,
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.motivation,
     ),
     
@@ -451,7 +505,7 @@ application_dialog = Dialog(
             id="experience_input",
             on_success=on_experience_input,
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.experience,
     ),
     
@@ -460,10 +514,10 @@ application_dialog = Dialog(
         Format("{overview_text}"),
         Group(
             Button(Const("✅ Подтвердить и отправить"), id="submit_app", on_click=on_submit_application),
-            Button(Const("✏️ Изменить ответы"), id="edit_app", on_click=lambda c, b, m: m.switch_to(ApplicationSG.edit_menu)),
+            Button(Const("✏️ Изменить ответы"), id="edit_app", on_click=on_to_edit_menu),
             width=1,
         ),
-        Cancel(Const("❌ Отмена")),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.overview,
         getter=get_overview_data,
     ),
@@ -484,8 +538,8 @@ application_dialog = Dialog(
             Button(Const("10. 🤝 Опыт"), id="edit_experience", on_click=on_edit_field),
             width=2,
         ),
-        SwitchTo(Const("🔙 Назад к обзору"), id="back_to_overview", state=ApplicationSG.overview),
-        Cancel(Const("❌ Отмена")),
+        Button(Const("🔙 Назад к обзору"), id="back_to_overview", on_click=on_back_to_overview),
+        Cancel(Const("❌ Отмена"), on_click=on_application_cancelled),
         state=ApplicationSG.edit_menu,
     ),
     

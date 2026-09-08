@@ -29,3 +29,9 @@ class ApplicationSG(StatesGroup):
     submitted = State()            # Экран успешной отправки
 
 
+class ViewUserSG(StatesGroup):
+    """Просмотр профиля и анкеты пользователя для администраторов/дебага"""
+    user_info = State()            # Общая информация о пользователе
+    app_details = State()          # Постраничный просмотр анкеты волонтера
+
+

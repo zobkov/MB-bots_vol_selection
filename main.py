@@ -11,7 +11,7 @@ from config.config import load_config
 from database.db import Database
 from database.repositories import UserRepository
 from bot.handlers import router
-from bot.dialogs import start_dialog, menu_dialog, application_dialog
+from bot.dialogs import start_dialog, menu_dialog, application_dialog, view_user_dialog
 from bot.middlewares import LoggingMiddleware
 from bot.keyboards.command_menu import set_main_menu
 from utils.logging_config import setup_logging, log_error, log_user_action
@@ -91,6 +91,7 @@ async def main():
         dp.include_router(start_dialog)
         dp.include_router(menu_dialog)
         dp.include_router(application_dialog)
+        dp.include_router(view_user_dialog)
         
         # Настраиваем диалоги
         setup_dialogs(dp)

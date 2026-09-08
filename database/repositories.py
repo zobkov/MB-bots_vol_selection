@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User, Application
 from typing import Optional, List, Dict, Any
@@ -39,16 +39,24 @@ class UserRepository:
             log_error(e, "Ошибка при получении/создании пользователя", telegram_id)
             raise
 
-    async def update_status(self, telegram_id: int, status: str):
-        """Обновить статус пользователя"""
+    async def update_status(self, telegram_id: int, status: str) -> bool:
+        """Обновить статус пользователя по telegram_id или id в БД"""
         try:
-            await self.session.execute(
+            result = await self.session.execute(
                 update(User)
                 .where(User.telegram_id == telegram_id)
                 .values(status=status)
             )
+            if result.rowcount == 0:
+                # Попробуем по внутреннему id
+                result = await self.session.execute(
+                    update(User)
+                    .where(User.id == telegram_id)
+                    .values(status=status)
+                )
             await self.session.commit()
             log_db_operation("UPDATE", "users", f"status updated to {status}", telegram_id)
+            return result.rowcount > 0
         except Exception as e:
             log_error(e, "Ошибка при обновлении статуса пользователя", telegram_id)
             raise
@@ -59,6 +67,37 @@ class UserRepository:
             select(User).where(User.telegram_id == telegram_id)
         )
         return result.scalar_one_or_none()
+
+    async def get_user_by_id(self, user_id: int) -> Optional[User]:
+        """Получить пользователя по первичному ключу id"""
+        result = await self.session.execute(
+            select(User).where(User.id == user_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_user_by_username(self, username: str) -> Optional[User]:
+        """Получить пользователя по username (без учета регистра и @)"""
+        clean_username = username.strip().lstrip('@')
+        if not clean_username:
+            return None
+        result = await self.session.execute(
+            select(User).where(func.lower(User.telegram_username) == clean_username.lower())
+        )
+        return result.scalar_one_or_none()
+
+    async def find_user(self, query: str | int) -> Optional[User]:
+        """Универсальный поиск пользователя по telegram_id, id или username"""
+        if isinstance(query, int) or (isinstance(query, str) and query.strip().isdigit()):
+            uid = int(query)
+            user = await self.get_user_by_telegram_id(uid)
+            if user:
+                return user
+            user = await self.get_user_by_id(uid)
+            if user:
+                return user
+        
+        query_str = str(query).strip()
+        return await self.get_user_by_username(query_str)
 
 
 class ApplicationRepository:
@@ -142,7 +181,14 @@ class ApplicationRepository:
     async def get_user_applications(self, user_id: int) -> List[Application]:
         """Получить все заявки пользователя"""
         result = await self.session.execute(
-            select(Application).where(Application.user_id == user_id)
+            select(Application).where(Application.user_id == user_id).order_by(Application.created_at.desc())
         )
         return list(result.scalars().all())
+
+    async def get_latest_application_by_user_id(self, user_id: int) -> Optional[Application]:
+        """Получить последнюю поданную заявку пользователя"""
+        result = await self.session.execute(
+            select(Application).where(Application.user_id == user_id).order_by(Application.created_at.desc())
+        )
+        return result.scalars().first()
 

@@ -1,11 +1,12 @@
 from aiogram import Router
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from aiogram_dialog import DialogManager, StartMode
 
-from bot.states import StartSG, ApplicationSG, MenuSG
+from bot.states import StartSG, ApplicationSG, MenuSG, ViewUserSG
 from database.repositories import UserRepository
 from database.db import Database
+from utils.logging_config import log_user_action
 
 router = Router()
 
@@ -51,5 +52,112 @@ async def cmd_apply(message: Message, dialog_manager: DialogManager):
             await session.close()
     
     await dialog_manager.start(ApplicationSG.full_name, mode=StartMode.RESET_STACK)
+
+
+@router.message(Command("sub_status"))
+async def cmd_sub_status(message: Message, command: CommandObject, dialog_manager: DialogManager):
+    """
+    Команда дебага для изменения статуса пользователя:
+    /sub_status [user_id|telegram_username] 1/0
+    1 — 'submitted', 0 или 2 — 'registered'
+    """
+    args = command.args.split() if command.args else []
+    if len(args) < 2:
+        await message.answer(
+            "❌ <b>Использование:</b> <code>/sub_status [user_id|telegram_username] [1/0]</code>\n\n"
+            "• <code>1</code> — 'submitted' (заявка подана)\n"
+            "• <code>0</code> или <code>2</code> — 'registered' (зарегистрирован, заявка не подана)\n\n"
+            "<i>Пример:</i> <code>/sub_status 123456789 1</code> или <code>/sub_status @username 0</code>"
+        )
+        return
+
+    target_query = args[0]
+    status_flag = args[1].lower()
+
+    if status_flag in ("1", "submitted"):
+        new_status = "submitted"
+    elif status_flag in ("0", "2", "registered"):
+        new_status = "registered"
+    else:
+        await message.answer("❌ Неверный статус. Используйте <code>1</code> (submitted) или <code>0</code> (registered).")
+        return
+
+    db: Database = dialog_manager.middleware_data.get("db")
+    if not db:
+        await message.answer("❌ База данных недоступна.")
+        return
+
+    session = await db.get_session()
+    try:
+        user_repo = UserRepository(session)
+        user = await user_repo.find_user(target_query)
+        if not user:
+            await message.answer(f"❌ Пользователь <code>{target_query}</code> не найден в базе данных.")
+            return
+
+        old_status = user.status
+        await user_repo.update_status(user.telegram_id, new_status)
+
+        username = message.from_user.username or f"{message.from_user.first_name or ''}".strip()
+        log_user_action(
+            message.from_user.id,
+            username,
+            "ADMIN_CHANGE_STATUS",
+            f"Target: {user.telegram_id} (@{user.telegram_username}), Old: {old_status}, New: {new_status}"
+        )
+
+        user_display = f"@{user.telegram_username}" if user.telegram_username else f"ID: <code>{user.telegram_id}</code>"
+        await message.answer(
+            f"✅ Статус пользователя <b>{user_display}</b> (Telegram ID: <code>{user.telegram_id}</code>, DB ID: <code>{user.id}</code>) "
+            f"успешно изменен:\n"
+            f"<code>{old_status}</code> ➔ <b>{new_status}</b>"
+        )
+    finally:
+        await session.close()
+
+
+@router.message(Command("view_user"))
+async def cmd_view_user(message: Message, command: CommandObject, dialog_manager: DialogManager):
+    """
+    Команда дебага для просмотра информации и анкеты пользователя:
+    /view_user [user_id|telegram_username]
+    """
+    args = command.args.split() if command.args else []
+    if len(args) < 1:
+        await message.answer(
+            "❌ <b>Использование:</b> <code>/view_user [user_id|telegram_username]</code>\n\n"
+            "<i>Пример:</i> <code>/view_user 123456789</code> или <code>/view_user @username</code>"
+        )
+        return
+
+    target_query = args[0]
+    db: Database = dialog_manager.middleware_data.get("db")
+    if not db:
+        await message.answer("❌ База данных недоступна.")
+        return
+
+    session = await db.get_session()
+    try:
+        user_repo = UserRepository(session)
+        user = await user_repo.find_user(target_query)
+        if not user:
+            await message.answer(f"❌ Пользователь <code>{target_query}</code> не найден в базе данных.")
+            return
+
+        username = message.from_user.username or f"{message.from_user.first_name or ''}".strip()
+        log_user_action(
+            message.from_user.id,
+            username,
+            "ADMIN_VIEW_USER",
+            f"Viewed user {user.telegram_id} (@{user.telegram_username})"
+        )
+
+        await dialog_manager.start(
+            ViewUserSG.user_info,
+            data={"target_user_id": user.id, "app_page": 0},
+            mode=StartMode.RESET_STACK
+        )
+    finally:
+        await session.close()
 
 
